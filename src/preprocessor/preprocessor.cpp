@@ -297,7 +297,7 @@ void Preprocessor::handle_using_macro()
       {
          auto& t = copied.at(i);
 
-         if (t.type == TType::dot_dot_dot || t.type == TType::string)
+         if (t.lexeme == "...")
             t = parameter;
       }
       this->tokens.insert(this->tokens.begin() + this->index + 1, copied.begin() + 1, copied.end());

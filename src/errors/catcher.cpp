@@ -10,6 +10,7 @@ void Catcher::error(const char* error)
 {
    std::cout << std::endl << "1 error occurred:" << std::endl;
    std::cout << error << std::endl << std::endl;
+   this->errors.clear();
 }
 
 bool Catcher::empty() const
@@ -23,7 +24,7 @@ bool Catcher::display()
    if (!count)
       return false;
    
-   std::cout << std::endl << count << " error" << (count == 1 ? 0 : 's') << " occurred:" << std::endl;
+   std::cout << std::endl << count << " error" << (count == 1 ? char{} : 's') << " occurred:" << std::endl;
    for (const auto& error : this->errors)
       std::cout << error << std::endl;
    

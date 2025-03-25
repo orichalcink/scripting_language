@@ -12,18 +12,18 @@ public:
 
    std::vector<Token>& tokenize();
 
+private:
+   Catcher& catcher;
+   std::string& source;
+   std::vector<Token> tokens;
+   size_t index = 0;
+
    void push_token(TType type, const std::string& lexeme);
    void push_token_ad(TType type, const std::string& lexeme);
    
    char advance();
    char peek() const;
    char prev() const;
-
-private:
-   Catcher& catcher;
-   std::string& source;
-   std::vector<Token> tokens;
-   size_t index = 0;
 };
 
 #endif // LEXER_H

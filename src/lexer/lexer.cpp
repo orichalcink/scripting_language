@@ -47,6 +47,21 @@ std::vector<Token>& Lexer::tokenize()
          push_token(TType::r_paren, ")");
       else if (ch == ',')
          push_token(TType::comma, ",");
+      else if (ch == '#' && peek() == '#')
+         push_token_ad(TType::hash_hash, "##");
+      else if (ch == '#' && peek() == '=')
+         push_token_ad(TType::macro_equals, "#=");
+      else if (ch == '#' && peek() == '!')
+         push_token_ad(TType::macro_bang_equals, "#!");
+      else if (ch == '.' && peek() == '.')
+      {
+         advance();
+
+         if (peek() == '.')
+            push_token_ad(TType::dot_dot_dot, "...");
+         else
+            --this->index;
+      }
       else if (ch == '/' && peek() == '/')
          for (; this->index < source_size && this->source.at(this->index) != '\n'; ++this->index)
             ;

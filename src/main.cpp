@@ -1,11 +1,10 @@
 #include "errors/catcher.hpp"
 #include "errors/errors.hpp"
 #include "lexer/lexer.hpp"
+#include "preprocessor/preprocessor.hpp"
+#include "io/files.hpp"
+#include "io/args.hpp"
 #include <iostream>
-#include <filesystem>
-#include <fstream>
-
-namespace fs = std::filesystem;
 
 int main()
 {
@@ -18,42 +17,103 @@ int main()
       std::string input;
       std::getline(std::cin, input);
 
-      if (input == "")
+      Args args (catcher, input);
+
+      if (args.empty())
       {
          catcher.error(err::invalid_input);
          continue;
       }
 
-      if (input == "quit")
+      if (args.size() == 1 && args.at(0) == "quit")
       {
          std::cout << "Quitting..." << std::endl;
          return 0;
       }
-
-      if (fs::is_regular_file(input))
+      else if (args.size() == 1 && args.at(0) == "help")
       {
-         std::ifstream file (input);
-         input.clear();
+         std::cout << "TODO: add help command" << std::endl;
+      }
+      else if (args.size() >= 2 && args.at(0) == "run")
+      {
+         std::string file_name;
 
-         if (!file.is_open())
+         if (is_file(args.at(1)))
          {
-            catcher.error(err::cannot_open_file);
+            file_name = args.at(1);
+            input = read_file(catcher, file_name);
+
+            if (catcher.display())
+               continue;
+         }
+         else
+         {
+            catcher.error(err::invalid_run_command);
             continue;
          }
 
-         std::string line;
-         while (std::getline(file, line))
-            input += line + '\n';
-         file.close();
+         auto start_lex = std::chrono::high_resolution_clock::now();
+         Lexer lexer (catcher, input);
+         auto& tokens = lexer.tokenize();
+         auto end_lex = std::chrono::high_resolution_clock::now();
+
+         if (catcher.display())
+            continue;
+
+         if (args.get_arg("--log-lexer"))
+         {
+            std::cout << "\nTokens after lexing:\n";
+            for (const auto& token : tokens)
+               printf("%-13s - \"%s\"\n", token_to_string(token.type), token.lexeme.c_str());
+         }
+
+
+         auto start_pre = std::chrono::high_resolution_clock::now();
+         if (!args.get_arg("--skip-preprocessor"))
+         {
+            Preprocessor preprocessor (catcher, tokens, file_name);
+
+            if (args.contains("--macro-depth"))
+               preprocessor.specify_max_macro_depth(args.get_arg("--macro-depth"));
+
+            preprocessor.process();
+
+            if (catcher.display())
+               continue;
+         }
+         auto end_pre = std::chrono::high_resolution_clock::now();
+
+         if (args.get_arg("--log-preprocessor"))
+         {
+            std::cout << "\nTokens after preprocessing:\n";
+            for (const auto& token : tokens)
+               printf("%-13s - \"%s\"\n", token_to_string(token.type), token.lexeme.c_str());
+         }
+
+         if (args.get_arg("--bench"))
+         {
+            auto lex = std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex).count();
+            auto pre = std::chrono::duration_cast<std::chrono::microseconds>(end_pre - start_pre).count();
+
+            printf("Benchmark:\n");
+            printf("%-16s %ld μs\n", "Lexing time:", lex);
+            printf("%-16s %ld μs\n", "Processing time:", pre);
+            printf("%-16s %ld μs\n", "Total:", lex + pre);
+         }
       }
-  
-      Lexer lexer (catcher, input);
-      const auto& tokens = lexer.tokenize();
+      else
+      {
+         Lexer lexer (catcher, input);
+         auto& tokens = lexer.tokenize();
 
-      if (catcher.display())
-         continue;
+         if (catcher.display())
+            continue;
 
-      for (const auto& token : tokens)
-         std::cout << (int)token.type << " " << token.lexeme << std::endl;
+         Preprocessor preprocessor (catcher, tokens, "");
+         preprocessor.process();
+
+         if (catcher.display())
+            continue;
+      }
    }
 }

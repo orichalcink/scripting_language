@@ -31,6 +31,7 @@ private:
    size_t macro_depth = 0;
    size_t max_macro_depth = 32;
 
+   void evaluate_token();
    void handle_macro_definition();
    void handle_using_macro();
    void handle_deleting_macro();
@@ -40,6 +41,8 @@ private:
    void handle_boolean_expressions();
    void handle_concatenation();
    void handle_equality_operators();
+   void handle_errors();
+   void handle_logging();
 
    Token& current();
    Token& skip();

@@ -42,7 +42,8 @@ namespace err
    error invalid_concatenation_macro = "Invalid concatenation macro, expected two operands.";
    error invalid_equality_macro = "Invalid equality/inequality macro, expected two operands.";
    error invalid_undefine = "Expected a macro identifier after the '#undefine'/'#undef' keyword.";
-   error expected_r_paren_variadic_macro = "Expected a ')' after '...' in variadic macro definition.";
+   error invalid_variadic_macro = "Invalid variadic macro, the '...' operator can only be used once and only at the end of the parameter list.";
+   error expected_string_after_error = "Expected a string after the error macro.";
 } // namespace err
 
 #undef error

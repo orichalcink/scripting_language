@@ -13,7 +13,10 @@ Scripting language by chalcinxx.
 - - [Defines](#defines)
 - - [Variadic macros](#variadic-macros)
 - - [Macro string operations](#macro-string-operations)
+- - [Macro equality operations](#macro-equality-operations)
 - - [Un-defines](#un-defines)
+- - [Errors](#errors)
+- - [Logging](#logging)
 - [Misc](#misc)
 - - [Comments](#comments)
 - - [Newline operator](#newline-operator)
@@ -56,10 +59,14 @@ Variadic macros can be defined using the `...` operator with this syntax:
 ```
 Here's an example:
 ```c
-#def stringify(...) = ...;
+#def stringify(...) = "...";
 stringify(a, b, c, d, e, f) // Replaces with: "a b c d e f"
 ```
-The parameters get turned into one giant string and then any `...` or `"..."` found get replaced by it.
+Parameters can also be defined before the `...` operator, as long as the `...` operator is last and is not used more than once:
+```c
+#def fun(a, b, c, ...) = a AND b AND c OR ...;
+fun(let, mut, thing, lala, 'c', "string") // Replaces with: let AND mut AND thing OR lala 'c' "string"
+```
 ### Macro string operations
 Macro arguments can be stringified by putting them in between double quotes:
 ```c
@@ -70,16 +77,19 @@ This only works in parametrized macros for the parameters, and only if the strin
 
 Strings can also be concatenated during processing using the `##` operator like this:
 ```c
-#def stringify2(x, y) = "x" ## " " ## "y";
+#def stringify2(x, y) = "x" " " "y" ## ##;
 stringify2(mut let x, = 20;) // Replaces with: "mut let x = 20 ;" 
 ```
-Note that the `##` operator does not separate the arguments with a space, but `"` do.
+This might look confusing, because the `##` operator concatenates two tokens that are before it, so in this case, the first `##` operator concatenates `"y"` and `" "` together and the second one concatenates `"x"` and `" y"` together.
+
+Note that the `##` operator does not automatically separate the arguments with a space, but `"` do.
 ### Macro equality operations
 Two token lexemes can be checked at the preprocessor stage with `#=` and `#!` operators:
 ```c
-let #= "let" // true, because they have the same lexeme
-10 #! "10" // false, because they have the same lexeme
+let "let" #= // true, because they have the same lexeme
+10 "10" #! // false, because they have the same lexeme
 ```
+Just like the `##` operator, these two operators take the previous two tokens and compare them.
 ### Un-defines:
 Macros can be undefined using the following syntax:
 ```c
@@ -93,7 +103,42 @@ x // Integer 20
 #undef x;
 x // Identifier "x"
 ```
-Nothing will happen if you try to un-define a macro that is not defined.
+Nothing will happen if you try to undefine a macro that is not defined.
+### Errors:
+Errors can be thrown using the `#error` keyword, the errors will be thrown using the same system that any syntax, file and other errors are thrown with:
+```c
+#error "Error: something went wrong!";
+```
+### Logging:
+Anything at the preprocessor-level can be logged with the `#log` keyword using this syntax:
+```c
+#log BODY;
+#logl BODY
+```
+The difference between `#log` and `#logl` is that `#log` will log everything until the first `;` that isn't used by another statement (more on that later), but `#logl` will log everything until the first new line.
+
+Here are some examples:
+```c
+#log 10; // 10
+#log "Hello, World!"; // Hello, World!
+#log mut let x = 20; // mutletx=20 
+
+#def x = 20 && 40;
+#log x; // 20&&40
+```
+Statements can be placed inside of the log statement and they'll work as usual:
+```c
+#log #def x = 20; 20; // 20
+#log x; // 20, x is still defined
+
+#log #def y(...) = "..."; y(1, 2, 3, 4, 5); // 1 2 3 4 5
+#log y(mut, let) // mut let, y is still defined
+```
+We can also create a prettier version of `#log` that uses a space as a separator using the variadic macros:
+```c
+#def pretty_log(...) = #logl "..." ;; ;
+pretty_log(12, 3, 4, 5, "string") // 12 3 4 5 string
+```
 ## Misc
 ### Comments:
 Comments are the same as C-style comments:

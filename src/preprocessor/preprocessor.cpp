@@ -1,6 +1,7 @@
 #include "preprocessor/preprocessor.hpp"
 #include "errors/errors.hpp"
 #include <algorithm>
+#include <iostream>
 
 Preprocessor::Preprocessor(Catcher& catcher, std::vector<Token>& tokens, const std::string& file)
    : catcher(catcher), tokens(tokens)
@@ -19,25 +20,7 @@ void Preprocessor::process()
 {
    for (; this->index < this->total_size; ++this->index)
    {
-      auto& token = current();
-
-      if (token.type == TType::macro && (token.lexeme == "import" || token.lexeme == "include"))
-         handle_importing();
-      else if (token.type == TType::macro && (token.lexeme == "define" || token.lexeme == "def" || token.lexeme == "define_line" || token.lexeme == "defl"))
-         handle_macro_definition();
-      else if (token.type == TType::identifier && this->macros.find(token.lexeme) != this->macros.end())
-         handle_using_macro();
-      else if (token.type == TType::macro && (token.lexeme == "undef" || token.lexeme == "undefine"))
-         handle_deleting_macro();
-      else if (is_macro_conditional(token))
-         handle_macro_conditionals();
-      else if (is_macro_conditional_else_if(token) || (token.type == TType::macro && (token.lexeme == "else" || token.lexeme == "endif" || token.lexeme == "then")))
-         this->catcher.insert(err::invalid_mcond_start);
-      else if (token.type == TType::hash_hash)
-         handle_concatenation();
-      else if (token.type == TType::macro_equals || token.type == TType::macro_bang_equals)
-         handle_equality_operators();
-      
+      evaluate_token();
       if (!this->catcher.empty())
          return;
    }
@@ -48,11 +31,43 @@ void Preprocessor::process()
    }), this->tokens.end());
 }
 
+void Preprocessor::evaluate_token()
+{
+   auto& token = current();
+   bool used_macro = false;
+
+   if (token.type == TType::macro && (token.lexeme == "import" || token.lexeme == "include"))
+      handle_importing();
+   else if (token.type == TType::macro && (token.lexeme == "def" || token.lexeme == "defl"))
+      handle_macro_definition();
+   else if (token.type == TType::identifier && this->macros.find(token.lexeme) != this->macros.end())
+   {
+      handle_using_macro();
+      used_macro = true;
+   }
+   else if (token.type == TType::macro && token.lexeme == "undef")
+      handle_deleting_macro();
+   else if (is_macro_conditional(token))
+      handle_macro_conditionals();
+   else if (is_macro_conditional_else_if(token) || (token.type == TType::macro && (token.lexeme == "else" || token.lexeme == "endif" || token.lexeme == "then")))
+      this->catcher.insert(err::invalid_mcond_start);
+   else if (token.type == TType::hash_hash)
+      handle_concatenation();
+   else if (token.type == TType::macro_equals || token.type == TType::macro_bang_equals)
+      handle_equality_operators();
+   else if (token.type == TType::macro && token.lexeme == "error")
+      handle_errors();
+   else if (token.type == TType::macro && (token.lexeme == "log" || token.lexeme == "logl"))
+      handle_logging();
+
+   if (!used_macro)
+      this->macro_depth = 0;
+}
+
 void Preprocessor::handle_macro_definition()
 {
-   this->macro_depth = 0;
    auto& token = current();
-   bool define_line = (token.lexeme == "define_line" || token.lexeme == "defl");
+   bool define_line = (token.lexeme == "defl");
    auto& name_token = skip();
 
    if (name_token.type != TType::identifier)
@@ -79,45 +94,7 @@ void Preprocessor::handle_macro_definition()
       return;
    }
 
-   if (params && token.type == TType::dot_dot_dot)
-   {
-      skip();
-      token = skip();
-
-      if (token.type != TType::r_paren)
-      {
-         this->catcher.insert(err::expected_r_paren_variadic_macro);
-         return;
-      }
-
-      std::vector<Token> values;
-      Token variadic {TType::newline, "variadic"};
-      values.push_back(variadic);
-
-      token = skip();
-      if (token.type != TType::equals)
-      {
-         this->catcher.insert(err::expected_equals_macro_def);
-         return;
-      }
-      token = skip();
-
-      TType end = (define_line ? TType::newline : TType::semicolon);
-      while (token.type != end && token.type != TType::eof)
-      {
-         Token copied {token.type, token.lexeme};
-         values.push_back(copied);
-         token = skip();
-      }
-
-      if (values.size() - 1 == 0)
-      {
-         this->catcher.insert(err::invalid_macro_body);
-         return;
-      }
-      this->macros.insert({name_token.lexeme, values});
-   }
-   else if (params)
+   if (params)
    {
       skip();
       std::vector<Token> values;
@@ -126,12 +103,23 @@ void Preprocessor::handle_macro_definition()
       values.push_back(separator);
 
       size_t arg_count = 0;
+      bool variadic = false;
       token = current();
 
-      while (token.type == TType::identifier)
+      while (token.type == TType::identifier || token.type == TType::dot_dot_dot)
       {
          Token new_token {token.type, token.lexeme};
          values.push_back(new_token);
+
+         if (token.type == TType::dot_dot_dot)
+         {
+            if (variadic)
+            {
+               this->catcher.insert(err::invalid_variadic_macro);
+               return;
+            }
+            variadic = true;
+         }
 
          ++arg_count;
          token = skip();
@@ -147,6 +135,13 @@ void Preprocessor::handle_macro_definition()
             break;
          token = current();
       }
+
+      if (variadic && values.back().type != TType::dot_dot_dot)
+      {
+         this->catcher.insert(err::invalid_variadic_macro);
+         return;
+      }
+
       values.push_back(separator);
       token = current();
 
@@ -251,69 +246,29 @@ void Preprocessor::handle_using_macro()
       return;
    }
 
-   if (args && definition.size() > 0 && definition.at(0).type == TType::newline && definition.at(0).lexeme == "variadic")
-   {
-      auto copied = definition;
-      token = skip();
-      Token parameter {TType::string, ""};
-
-      size_t param_depth = 1;
-
-      while (this->index < this->total_size)
-      {
-         while (token.type != TType::comma && token.type != TType::eof)
-         {
-            if (token.type == TType::l_paren)
-               ++param_depth;
-
-            if (token.type == TType::r_paren)
-            {
-               --param_depth;
-               if (param_depth == 0)
-                  break;
-            }
-            parameter.lexeme += token.lexeme + " ";
-            token = skip();
-         }
-
-         if (token.type != TType::comma && token.type != TType::r_paren)
-         {
-            this->catcher.insert(err::expected_comma_or_r_paren);
-            return;
-         }
-
-         if (token.type == TType::r_paren)
-         {
-            token.type = TType::skip;
-            skip();
-            --this->index;
-            break;
-         }
-         token = skip();
-      }
-      parameter.lexeme.pop_back();
-
-      for (size_t i = 1; i < copied.size(); ++i)
-      {
-         auto& t = copied.at(i);
-
-         if (t.lexeme == "...")
-            t = parameter;
-      }
-      this->tokens.insert(this->tokens.begin() + this->index + 1, copied.begin() + 1, copied.end());
-      this->total_size = this->tokens.size();
-   }
-   else if (args)
+   if (args)
    {
       auto copied = definition;
       token = skip();
       std::vector<std::vector<Token>> params;
+      std::vector<Token> variadic_params;
 
       size_t param_depth = 1;
+      size_t l_index = 1;
+      bool variadic = false;
 
       while (this->index < this->total_size)
       {
          std::vector<Token> param;
+
+         bool valid = (l_index <= copied.size());
+
+         if (valid && copied.at(l_index).type == TType::dot_dot_dot)
+            variadic = true;
+         else if (valid && copied.at(l_index).type == TType::newline)
+            l_index = copied.size();
+
+         ++l_index;
 
          while (token.type != TType::comma && token.type != TType::eof)
          {
@@ -328,7 +283,11 @@ void Preprocessor::handle_using_macro()
             }
 
             Token copied {token.type, token.lexeme};
-            param.push_back(copied);
+
+            if (variadic)
+               variadic_params.push_back(copied);
+            else
+               param.push_back(copied);
             token = skip();
          }
          params.push_back(param);
@@ -363,7 +322,10 @@ void Preprocessor::handle_using_macro()
          t.type = TType::skip;
       }
 
-      if (param_count != params.size() || (copied.size() > 0 && (copied.at(0).type != TType::newline || copied.at(0).lexeme != "separator")))
+      bool valid_arg_count = (variadic ? param_count <= params.size() : param_count == params.size());
+      bool is_parametrized = (copied.size() > 0 && (copied.front().type == TType::newline && copied.front().lexeme == "separator"));
+
+      if (!valid_arg_count || !is_parametrized)
       {
          this->catcher.insert(err::invalid_arg_count);
          return;
@@ -375,8 +337,21 @@ void Preprocessor::handle_using_macro()
 
          if (translations.find(t.lexeme) == translations.end())
             continue;
-         
-         if (t.type == TType::identifier)
+
+         if (variadic && t.type == TType::dot_dot_dot)
+         {
+            t.type = TType::skip;
+            copied.insert(copied.begin() + i + 1, variadic_params.begin(), variadic_params.end());
+         }
+         else if (variadic && t.type == TType::string && t.lexeme == "...")
+         {
+            t.lexeme.clear();
+
+            for (auto& v : variadic_params)
+               t.lexeme += v.lexeme + " ";
+            t.lexeme.pop_back();
+         }
+         else if (t.type == TType::identifier)
          {
             t.type = TType::skip;
 
@@ -460,29 +435,29 @@ void Preprocessor::handle_boolean_expressions()
 
 void Preprocessor::handle_concatenation()
 {
-   if (this->index == 0 || this->index + 1 >= this->total_size)
+   if (this->index < 2)
    {
       this->catcher.insert(err::invalid_concatenation_macro);
       return;
    }
    size_t op_index = this->index;
 
-   auto& left  = this->tokens.at(op_index - 1);
-   auto& right = this->tokens.at(op_index + 1);
+   auto& left  = this->tokens.at(op_index - 2);
+   auto& right = this->tokens.at(op_index - 1);
 
-   right.type = TType::string;
-   right.lexeme = left.lexeme + right.lexeme;
+   left.type = TType::string;
+   left.lexeme = left.lexeme + right.lexeme;
 
    this->tokens.erase(this->tokens.begin() + op_index);
    this->tokens.erase(this->tokens.begin() + op_index - 1);
 
-   this->index = op_index - 1;
+   this->index = op_index - 3;
    this->total_size = this->tokens.size();
 }
 
 void Preprocessor::handle_equality_operators()
 {
-   if (this->index == 0 || this->index + 1 >= this->total_size)
+   if (this->index < 2)
    {
       this->catcher.insert(err::invalid_concatenation_macro);
       return;
@@ -490,20 +465,73 @@ void Preprocessor::handle_equality_operators()
    size_t op_index = this->index;
    bool negative = (current().type == TType::macro_bang_equals);
 
-   auto& left  = this->tokens.at(op_index - 1);
-   auto& right = this->tokens.at(op_index + 1);
+   auto& left  = this->tokens.at(op_index - 2);
+   auto& right = this->tokens.at(op_index - 1);
 
    bool result = (left.lexeme == right.lexeme);
    result = (negative ? !result : result);
 
-   right.type = TType::integer;
-   right.lexeme = std::to_string(result);
+   left.type = TType::integer;
+   left.lexeme = std::to_string(result);
 
    this->tokens.erase(this->tokens.begin() + op_index);
    this->tokens.erase(this->tokens.begin() + op_index - 1);
 
-   this->index = op_index - 1;
+   this->index = op_index - 3;
    this->total_size = this->tokens.size();
+}
+
+void Preprocessor::handle_errors()
+{
+   auto& error = skip();
+
+   if (error.type != TType::string)
+   {
+      this->catcher.insert(err::expected_string_after_error);
+      return;
+   }
+   auto& end = skip();
+
+   if (end.type != TType::semicolon)
+   {
+      this->catcher.insert(err::statement_semicolon);
+      return;
+   }
+   end.type = TType::skip;
+   skip();
+   --this->index;
+   this->catcher.insert(error.lexeme.c_str());
+}
+
+void Preprocessor::handle_logging()
+{
+   TType end = (current().lexeme == "log" ? TType::semicolon : TType::newline);
+   auto& token = skip();
+   std::string log;
+
+   while (token.type != end && token.type != TType::eof)
+   {
+      evaluate_token();
+      token = current();
+
+      if (token.type == end || token.type == TType::eof)
+         break;
+
+      if (token.type != TType::skip && token.type != TType::newline)
+         log += token.lexeme;
+      skip();
+   }
+
+   if (end == TType::semicolon && token.type != TType::semicolon)
+   {
+      this->catcher.insert(err::statement_semicolon);
+      return;
+   }
+   token.type = TType::skip;
+   skip();
+
+   --this->index;
+   std::cout << log << std::endl;
 }
 
 Token& Preprocessor::current()

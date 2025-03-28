@@ -1,5 +1,5 @@
 # Scripting language
-Scripting language by chalcinxx.
+Scripting language by chalcinxx. Version 1.0.1.
 
 ## How it works
 1. The input is retrieved from the user and parsed into arguments.
@@ -18,6 +18,7 @@ Scripting language by chalcinxx.
 - - [Un-defines](#un-defines)
 - - [Errors](#errors)
 - - [Logging](#logging)
+- - [Predefined macros](#predefined-macros)
 - [Misc](#misc)
 - - [Comments](#comments)
 - - [Newline operator](#newline-operator)
@@ -26,7 +27,7 @@ Scripting language by chalcinxx.
 - - [Executing code on the fly](#execute-code-on-the-fly)
 - - [Run arguments](#run-arguments)
 
-## Macros
+# Macros
 ### Importing
 Other files can be imported using this syntax:
 ```c
@@ -187,7 +188,32 @@ We can also create a prettier version of `#log` that uses a space as a separator
 #def pretty_log(...) = #logl "..." ;; ;
 pretty_log(12, 3, 4, 5, "string") // 12 3 4 5 string
 ```
-## Misc
+### Predefined macros
+Predefined macros can be used like any other macro, even undefined if needed:
+```c
+#log __DATETIME__; // Logs the current date and time
+```
+Here's the list of all of them:
+- `__FILE__` - Current file.
+- `__VERSION__` - Current version as integer.
+- `__VERSION_MAJOR__` - Major version.
+- `__VERSION_MINOR__` - Minor version.
+- `__VERSION_PATCH__` - Patch version.
+- `__VERSION_STR__` - Version string.
+- `__EPOCH__` - Time in seconds since epoch.
+- `__EPOCH_NS__` - Time in nanoseconds since epoch.
+- `__DATE__` - The current date.
+- `__TIME__` - The current time.
+- `__DATETIME__` - The current date and time.
+- `__OS__` - Name of the OS ("Windows", "Linux" or "MacOS").
+
+List of empty macros purely for macro conditionals:
+- `__WIN__` - User is using Windows.
+- `__LINUX__` - User is using Linux.
+- `__MACOS__` - User is using MacOS.
+- `__64BIT__` - User is running a 64bit machine.
+- `__32BIT__` - User is running a 32bit machine.
+# Misc
 ### Comments:
 Comments are the same as C-style comments:
 ```c
@@ -211,7 +237,7 @@ mut let y = 20;
 mut let z = 30;
 ```
 
-## Run args
+# Run args
 ### Executing a file
 To execute a file, the `run` argument must be used and the file after:
 ```
@@ -238,4 +264,5 @@ Here's the list of all of them:
 - `--log-preprocessor` - Display all tokens after processing the tokens.
 - `--skip-preprocessor` - Skip processing the tokens in the preprocessor.
 - `--bench` - Measure and display the execution time.
-- `--macro-depth=INTEGER` - set the maximum macro recursion that is used for preventing infinite macro loops.
+- `--macro-depth=INTEGER` - Set the maximum macro recursion that is used for preventing infinite macro loops.
+- `--no-predefined-macros` - Do not define any predefined macros.

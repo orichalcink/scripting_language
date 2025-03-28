@@ -147,7 +147,7 @@ std::vector<Token>& Lexer::tokenize()
          
          push_token(TType::character, std::string(1, ch));
       }
-      else if (isalpha(ch) || ch == '#')
+      else if (isalpha(ch) || ch == '#' || ch == '_')
       {
          std::string identifier;
          bool macro = (ch == '#');

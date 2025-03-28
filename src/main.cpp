@@ -71,7 +71,7 @@ int main()
          auto start_pre = std::chrono::high_resolution_clock::now();
          if (!args.get_arg("--skip-preprocessor"))
          {
-            Preprocessor preprocessor (catcher, tokens, file_name);
+            Preprocessor preprocessor (catcher, tokens, file_name, args.get_arg("--no-predefined-macros"));
 
             if (args.contains("--macro-depth"))
                preprocessor.specify_max_macro_depth(args.get_arg("--macro-depth"));
@@ -109,7 +109,7 @@ int main()
          if (catcher.display())
             continue;
 
-         Preprocessor preprocessor (catcher, tokens, "");
+         Preprocessor preprocessor (catcher, tokens, "", false);
          preprocessor.process();
 
          if (catcher.display())

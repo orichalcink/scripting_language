@@ -7,12 +7,12 @@
 #include <unordered_set>
 
 enum class CType : std::int8_t
-{ true_, false_, evaluated, evaluating };
+{ true_, false_, evaluated };
 
 class Preprocessor
 {
 public:
-   Preprocessor(Catcher& catcher, std::vector<Token>& tokens, const std::string& file);
+   Preprocessor(Catcher& catcher, std::vector<Token>& tokens, const std::string& file, bool skip_macros);
    ~Preprocessor() = default;
 
    void specify_max_macro_depth(size_t max_macro_depth);
@@ -38,7 +38,7 @@ private:
    void handle_importing();
    void handle_file(const std::string& file, bool include_guard);
    void handle_macro_conditionals();
-   void handle_boolean_expressions();
+   bool handle_boolean_expressions();
    void handle_concatenation();
    void handle_equality_operators();
    void handle_errors();
@@ -48,8 +48,6 @@ private:
    Token& skip();
    void advance();
 
-   bool is_macro_conditional(const Token& token) const;
-   bool is_macro_conditional_else_if(const Token& token) const;
    int get_operator_precedence(TType type) const;
    bool has_higher_precedence(TType first, TType second);
 };

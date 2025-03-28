@@ -32,7 +32,6 @@ namespace err
    error macro_exists = "Tried to define a macro that already exists.";
    error invalid_macro_params = "Invalid macro parameters in macro definition, either use no parentheses or parentheses with parameters.";
    error invalid_macro_body = "Invalid macro body, expected atleast one token. Use ';' instead of '=' if pure definition macro is needed.";
-   error invalid_mcond_start = "Macro conditionals must start with '#if'/'#ifn'/'#ifdef'/'#ifndef'.";
    error expected_comma_or_r_paren = "Expected a ',' or a ')' after a parameter in macro definition.";
    error invalid_macro_call = "Invalid macro call, either unclosed parentheses or parentheses without arguments.";
    error called_empty_macro = "Tried to call a macro that was defined without a body.";
@@ -46,6 +45,13 @@ namespace err
    error expected_string_after_error = "Expected a string after the error macro.";
    error import_invalid_file = "Tried to import a file that does not exist.";
    error expected_file = "Expected a file after '#include'/'#import' keyword.";
+   error invalid_mcond_start = "Macro conditionals must start with '#if'.";
+   error mcond_endif = "Macro conditional did not end with an '#endif'.";
+   error invalid_mcond = "Invalid macro conditional, expected a new line after the boolean expression.";
+   error mcond_mismatched_parentheses = "Mismatched parentheses in macro conditional boolean expression.";
+   error invalid_bool_expr = "Invalid boolean expression in macro conditional.";
+   error unexpected_token_mcond = "Unexpected token in macro conditional boolean expression.";
+   error could_not_convert_number = "Could not convert the token to a number.";
 } // namespace err
 
 #undef error

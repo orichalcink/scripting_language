@@ -2,15 +2,111 @@
 #include "errors/errors.hpp"
 #include "io/files.hpp"
 #include "lexer/lexer.hpp"
+#include "config/version.hpp"
+#include <iomanip>
 #include <algorithm>
 #include <iostream>
+#include <stack>
 
-Preprocessor::Preprocessor(Catcher& catcher, std::vector<Token>& tokens, const std::string& file)
+Preprocessor::Preprocessor(Catcher& catcher, std::vector<Token>& tokens, const std::string& file, bool skip_macros)
    : catcher(catcher), tokens(tokens)
 {
-   if (!file.empty())
-      this->included_files.insert(file);
    this->total_size = this->tokens.size();
+
+   if (!file.empty())
+   {
+      this->included_files.insert(file);
+
+      if (skip_macros)
+         return;
+      Token file_token {TType::string, file};
+      this->macros.insert({"__FILE__", {file_token}});
+   }
+   else
+   {
+      if (skip_macros)
+         return;
+      Token file_token {TType::string, "REPL"};
+      this->macros.insert({"__FILE__", {file_token}});
+   }
+
+   Token skip  {TType::skip, ""};
+   Token token {TType::integer, std::to_string(version::version)};
+   this->macros.insert({"__VERSION__", {token}});
+
+   token.lexeme = std::to_string(version::major);
+   this->macros.insert({"__VERSION_MAJOR__", {token}});
+
+   token.lexeme = std::to_string(version::minor);
+   this->macros.insert({"__VERSION_MINOR__", {token}});
+
+   token.lexeme = std::to_string(version::patch);
+   this->macros.insert({"__VERSION_PATCH__", {token}});
+
+   token = {TType::string, version::string};
+   this->macros.insert({"__VERSION_STR__", {token}});
+
+   auto time = std::chrono::high_resolution_clock::now();
+
+   token = {TType::integer, std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time.time_since_epoch()).count())};
+   this->macros.insert({"__EPOCH__", {token}});
+
+   token = {TType::integer, std::to_string(time.time_since_epoch().count())};
+   this->macros.insert({"__EPOCH_NS__", {token}});
+
+   auto now = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+   std::tm now_tm = *std::localtime(&now);
+
+   std::ostringstream oss;
+   oss << std::put_time(&now_tm, "%Y-%m-%d");
+
+   token = {TType::string, oss.str()};
+   this->macros.insert({"__DATE__", {token}});
+
+   oss.str("");
+   oss << std::put_time(&now_tm, "%Y-%m-%d %H:%M:%S");
+
+   token = {TType::string, oss.str()};
+   this->macros.insert({"__DATETIME__", {token}});
+
+   oss.str("");
+   oss << std::put_time(&now_tm, "%H:%M:%S");
+
+   token = {TType::string, oss.str()};
+   this->macros.insert({"__TIME__", {token}});
+
+   #if defined(_WIN64) || defined(_WIN32)
+      this->macros.insert({"__WIN__", {skip}});
+      token = {TType::string, "Windows"};
+      this->macros.insert({"__OS__", {token}});
+
+      #if defined(_WIN64)
+         this->macros.insert({"__64BIT__", {skip}});
+      #else
+         this->macros.insert({"__32BIT__", {skip}});
+      #endif
+   #elif defined(__linux__)
+      this->macros.insert({"__LINUX__", {skip}});
+      token = {TType::string, "Linux"};
+      this->macros.insert({"__OS__", {token}});
+
+      #if defined(__x86_64__) || defined(_M_X64)
+         this->macros.insert({"__64BIT__", {skip}});
+      #else
+         this->macros.insert({"__32BIT__", {skip}});
+      #endif
+   #elif defined(__APPLE__)
+      this->macros.insert({"__MACOS__", {skip}});
+      token = {TType::string, "MacOS"};
+      this->macros.insert({"__OS__", {token}});
+
+      #if defined(__x86_64__)
+         this->macros.insert({"__64BIT__", {skip}});
+      #else
+         this->macros.insert({"__32BIT__", {skip}});
+      #endif
+   #endif
+
 }
 
 void Preprocessor::specify_max_macro_depth(size_t max_macro_depth)
@@ -29,7 +125,7 @@ void Preprocessor::process()
 
    this->tokens.erase(std::remove_if(this->tokens.begin(), this->tokens.end(), [](const Token& t) -> bool
    {
-      return t.type == TType::skip || t.type == TType::newline;
+      return t.type == TType::skip || t.type == TType::newline || t.type == TType::eoi;
    }), this->tokens.end());
 }
 
@@ -49,9 +145,9 @@ void Preprocessor::evaluate_token()
    }
    else if (token.type == TType::macro && token.lexeme == "undef")
       handle_deleting_macro();
-   else if (is_macro_conditional(token))
+   else if (token.type == TType::macro && token.lexeme == "if")
       handle_macro_conditionals();
-   else if (is_macro_conditional_else_if(token) || (token.type == TType::macro && (token.lexeme == "else" || token.lexeme == "endif" || token.lexeme == "then")))
+   else if (token.type == TType::macro && (token.lexeme == "elif" || token.lexeme == "else" || token.lexeme == "endif"))
       this->catcher.insert(err::invalid_mcond_start);
    else if (token.type == TType::hash_hash)
       handle_concatenation();
@@ -61,6 +157,8 @@ void Preprocessor::evaluate_token()
       handle_errors();
    else if (token.type == TType::macro && (token.lexeme == "log" || token.lexeme == "logl"))
       handle_logging();
+   else if (token.type == TType::eoi && this->macros.find("__FILE__") != this->macros.end())
+      this->macros.at("__FILE__").at(0).lexeme = token.lexeme;
 
    if (!used_macro)
       this->macro_depth = 0;
@@ -157,8 +255,7 @@ void Preprocessor::handle_macro_definition()
       TType end = (define_line ? TType::newline : TType::semicolon);
       while (token.type != end && token.type != TType::eof)
       {
-         Token copied {token.type, token.lexeme};
-         values.push_back(copied);
+         values.push_back(token);
          token = skip();
       }
 
@@ -199,8 +296,7 @@ void Preprocessor::handle_macro_definition()
 
       while (token.type != end && token.type != TType::eof)
       {
-         Token copied {token.type, token.lexeme};
-         values.push_back(copied);
+         values.push_back(token);
          token = skip();
       }
 
@@ -284,12 +380,10 @@ void Preprocessor::handle_using_macro()
                   break;
             }
 
-            Token copied {token.type, token.lexeme};
-
             if (variadic)
-               variadic_params.push_back(copied);
+               variadic_params.push_back(token);
             else
-               param.push_back(copied);
+               param.push_back(token);
             token = skip();
          }
          params.push_back(param);
@@ -383,7 +477,7 @@ void Preprocessor::handle_using_macro()
          return;
       }
 
-      if (token.type == TType::newline && (token.lexeme == "separator" || token.lexeme == "variadic"))
+      if (token.type == TType::newline && token.lexeme == "separator")
       {
          this->catcher.insert(err::invalid_arg_count);
          return;
@@ -391,7 +485,7 @@ void Preprocessor::handle_using_macro()
 
       this->tokens.insert(this->tokens.begin() + this->index, definition.begin() + 1, definition.end());
       this->total_size = this->tokens.size();
-      this->index -= 2;
+      this->index -= 1;
    }
 }
 
@@ -497,7 +591,14 @@ void Preprocessor::handle_file(const std::string& file, bool include_guard)
    if (!this->catcher.empty())
       return;
 
-   tokens.back().type = TType::skip;
+   if (this->macros.find("__FILE__") != this->macros.end())
+   {
+      tokens.back().type = TType::eoi;
+      tokens.back().lexeme = this->macros.at("__FILE__").at(0).lexeme;
+      this->macros.at("__FILE__").at(0).lexeme = file;
+   }
+   else tokens.back().type = TType::skip;
+
    this->tokens.insert(this->tokens.begin() + this->index , tokens.begin(), tokens.end());
    this->total_size = this->tokens.size();
    --this->index;
@@ -505,12 +606,236 @@ void Preprocessor::handle_file(const std::string& file, bool include_guard)
 
 void Preprocessor::handle_macro_conditionals()
 {
+   auto& token = skip();
 
+   bool result = handle_boolean_expressions();
+   CType condition = (result ? CType::true_ : CType::false_);
+   size_t depth = 0;
+
+   while (token.type != TType::eof && (token.type != TType::macro || token.lexeme != "endif" || depth > 0))
+   {
+      if (token.type == TType::macro && token.lexeme == "elif")
+      {
+         if (condition == CType::false_ && depth == 0)
+         {
+            handle_macro_conditionals();
+            return;
+         }
+         else if (condition != CType::false_)
+            condition = CType::evaluated;
+      }
+
+      if (depth == 0 && token.type == TType::macro && token.lexeme == "else")
+      {
+         condition = (condition == CType::false_ ? CType::true_ : CType::evaluated);
+
+         if (condition == CType::true_)
+            token = skip();
+      }
+
+      if (condition == CType::true_)
+      {
+         evaluate_token();
+         ++this->index;
+         token = current();
+      }
+      else
+      {
+         if (token.type == TType::macro && token.lexeme == "if")
+            ++depth;
+         else if (depth > 0 && token.type == TType::macro && token.lexeme == "endif")
+            --depth;
+         token = skip();
+      }
+
+      if (!this->catcher.empty())
+         return;
+   }
+
+   if (token.type == TType::eof)
+   {
+      this->catcher.insert(err::mcond_endif);
+      return;
+   }
+   token.type = TType::skip;
+   skip();
+   --this->index;
 }
 
-void Preprocessor::handle_boolean_expressions()
+bool Preprocessor::handle_boolean_expressions()
 {
+   auto& token = current();
+   std::stack<Token> operators;
+   std::stack<Token> output;
 
+   while (token.type != TType::eof && token.type != TType::newline)
+   {
+      if (get_operator_precedence(token.type))
+      {
+         while (!operators.empty())
+         {
+            auto& top = operators.top();
+
+            if (!has_higher_precedence(token.type, top.type))
+            {
+               operators.pop();
+               output.push(top);
+            }
+            else break;
+         }
+         operators.push(token);
+      }
+      else if (token.type == TType::l_paren)
+         operators.push(token);
+      else if (token.type == TType::r_paren)
+      {
+         while (!operators.empty())
+         {
+            auto& op = operators.top();
+
+            if (op.type == TType::l_paren)
+            {
+               operators.pop();
+               break;
+            }
+            output.push(op);
+            operators.pop();
+         }
+      }
+      else output.push(token);
+
+      token = skip();
+   }
+
+   if (token.type == TType::eof)
+   {
+      this->catcher.insert(err::invalid_mcond);
+      return false;
+   }
+
+   skip();
+   std::stack<Token> reversed;
+
+   while (!operators.empty())
+   {
+      auto& op = operators.top();
+      if (op.type == TType::l_paren)
+      {
+         this->catcher.insert(err::mcond_mismatched_parentheses);
+         return false;
+      }
+      operators.pop();
+      output.push(op);
+   }
+
+   while (!output.empty())
+   {
+      auto& token = output.top();
+      output.pop();
+      reversed.push(token);
+   }
+
+   std::stack<long double> evaluated;
+
+   while (!reversed.empty())
+   {
+      auto& token = reversed.top();
+      reversed.pop();
+
+      if (token.type == TType::identifier)
+      {
+         if (this->macros.find(token.lexeme) == this->macros.end())
+         {
+            evaluated.push(0.0);
+            continue;
+         }
+
+         auto& macro_body = this->macros.at(token.lexeme);
+
+         if (macro_body.size() == 1 && macro_body.at(0).type == TType::skip)
+         {
+            evaluated.push(1.0);
+            continue;
+         }
+
+         for (const auto& t : macro_body)
+            reversed.push(t);
+      }
+      else if (token.type == TType::real || token.type == TType::integer)
+      {
+         long double result = 0.0;
+         try
+         {
+            result = std::stold(token.lexeme);
+         }
+         catch (...)
+         {
+            this->catcher.insert(err::could_not_convert_number);
+            return false;
+         }
+         evaluated.push(result);
+      }
+      else if (token.type == TType::bang)
+      {
+         if (evaluated.size() == 0)
+         {
+            this->catcher.insert(err::invalid_bool_expr);
+            return false;
+         }
+
+         long double a = evaluated.top();
+         long double result = (a == 0.0 ? 1.0 : 0.0);
+         evaluated.pop();
+         evaluated.push(result);
+      }
+      else
+      {
+         if (evaluated.size() < 2)
+         {
+            this->catcher.insert(err::invalid_bool_expr);
+            return false;
+         }
+
+         long double b = evaluated.top();
+         evaluated.pop();
+         long double a = evaluated.top();
+         evaluated.pop();
+
+         long double result = 0.0;
+         switch (token.type)
+         {
+         case TType::and_:
+            result = (a && b);
+            break;
+         case TType::or_:
+            result = (a || b);
+            break;
+         case TType::equals_equals:
+            result = (a == b);
+            break;
+         case TType::bang_equal:
+            result = (a != b);
+            break;
+         case TType::smaller:
+            result = (a < b);
+            break;
+         case TType::smaller_equal:
+            result = (a <= b);
+            break;
+         case TType::bigger:
+            result = (a > b);
+            break;
+         case TType::bigger_equal:
+            result = (a >= b);
+            break;
+         default:
+            result = false;
+            this->catcher.insert(err::unexpected_token_mcond);
+         }
+         evaluated.push(result);
+      }
+   }
+   return static_cast<bool>(evaluated.top());
 }
 
 void Preprocessor::handle_concatenation()
@@ -630,16 +955,6 @@ void Preprocessor::advance()
 {
    if (this->index + 1 < this->total_size)
       ++this->index;
-}
-
-bool Preprocessor::is_macro_conditional(const Token& token) const
-{
-   return token.type == TType::macro && (token.lexeme == "if" || token.lexeme == "ifn" || token.lexeme == "ifdef" || token.lexeme == "ifndef");
-}
-
-bool Preprocessor::is_macro_conditional_else_if(const Token& token) const
-{
-   return token.type == TType::macro && (token.lexeme == "elif" || token.lexeme == "elifn" || token.lexeme == "elifdef" || token.lexeme == "elifndef");
 }
 
 int Preprocessor::get_operator_precedence(TType type) const

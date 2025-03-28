@@ -10,7 +10,7 @@ enum class TType : std::int8_t
    equals, equals_equals, and_, or_, smaller, smaller_equal, bigger, bigger_equal, bang, bang_equal,
    macro_equals, macro_bang_equals,
    semicolon, dot_dot_dot, hash_hash, l_paren, r_paren, comma,
-   newline, skip, eof
+   newline, skip, eoi, eof
 };
 
 struct Token
@@ -52,6 +52,7 @@ constexpr const char* token_to_string(TType type)
    con(comma)
    con(newline)
    con(skip)
+   con(eoi)
    con(eof)
    }
 }

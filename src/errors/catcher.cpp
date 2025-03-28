@@ -8,9 +8,8 @@ void Catcher::insert(const char* error)
 
 void Catcher::error(const char* error)
 {
-   std::cout << std::endl << "1 error occurred:" << std::endl;
-   std::cout << error << std::endl << std::endl;
-   this->errors.clear();
+   insert(error);
+   display();
 }
 
 bool Catcher::empty() const
@@ -24,7 +23,16 @@ bool Catcher::display()
    if (!count)
       return false;
    
+   #if defined(__linux__) || defined(__APPLE__)
+   std::cout << "\033[38;2;255;0;0m";
+   #endif
+
    std::cout << std::endl << count << " error" << (count == 1 ? char{} : 's') << " occurred:" << std::endl;
+
+   #if defined(__linux__) || defined(__APPLE__)
+   std::cout << "\033[0m";
+   #endif
+
    for (const auto& error : this->errors)
       std::cout << error << std::endl;
    

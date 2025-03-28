@@ -618,6 +618,9 @@ void Preprocessor::handle_macro_conditionals()
       {
          if (condition == CType::false_ && depth == 0)
          {
+            token.type = TType::skip;
+            skip();
+            --this->index;
             handle_macro_conditionals();
             return;
          }

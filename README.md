@@ -19,6 +19,7 @@ Scripting language by chalcinxx. Version 1.0.1.
 - - [Errors](#errors)
 - - [Logging](#logging)
 - - [Predefined macros](#predefined-macros)
+- - [Macro conditionals](#macro-conditionals)
 - [Misc](#misc)
 - - [Comments](#comments)
 - - [Newline operator](#newline-operator)
@@ -213,6 +214,67 @@ List of empty macros purely for macro conditionals:
 - `__MACOS__` - User is using MacOS.
 - `__64BIT__` - User is running a 64bit machine.
 - `__32BIT__` - User is running a 32bit machine.
+### Macro conditionals
+Macro conditionals follow the following syntax:
+```c
+#if EXPRESSION
+   BODY
+#elif EXPRESSION
+   BODY
+#elif EXPRESSION
+   BODY
+#else
+   BODY
+#endif
+```
+Here's an example:
+```c
+#def x = 1;
+
+#if x
+   #log "X is true!";
+#else
+   #log "X is false!";
+#endif
+
+#if __WIN__
+   #log "User is running on Windows!";
+#elif __LINUX__
+   #log "User is running on Linux!";
+#else
+   #log "User is running on MacOS!";
+#endif
+```
+Boolean expressions can also contain these operators:
+- `&&`
+- `||`
+- `!`
+- `!=`
+- `==`
+- `<`
+- `<=`
+- `>`
+- `>=`
+Here's an example:
+```c
+#def x = 20;
+
+#if x == 10
+   #log "X is 10.";
+#elif x > 10
+   #log "X is bigger than 10.";
+#else
+   #log "X is smaller than 10.";
+#endif
+
+#if __LINUX__ && __64BIT__
+   #log "User is running on 64bit Linux!";
+#elif __WIN__ || __32BIT__
+   #log "User is running on Windows or a 32bit machine!";
+#else
+   #log "User is running on something else.";
+#endif
+```
 # Misc
 ### Comments:
 Comments are the same as C-style comments:

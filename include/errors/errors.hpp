@@ -44,6 +44,8 @@ namespace err
    error invalid_undefine = "Expected a macro identifier after the '#undefine'/'#undef' keyword.";
    error invalid_variadic_macro = "Invalid variadic macro, the '...' operator can only be used once and only at the end of the parameter list.";
    error expected_string_after_error = "Expected a string after the error macro.";
+   error import_invalid_file = "Tried to import a file that does not exist.";
+   error expected_file = "Expected a file after '#include'/'#import' keyword.";
 } // namespace err
 
 #undef error

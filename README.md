@@ -10,6 +10,7 @@ Scripting language by chalcinxx.
 
 ## Features:
 - [Macros](#macros)
+- - [Importing](#importing)
 - - [Defines](#defines)
 - - [Variadic macros](#variadic-macros)
 - - [Macro string operations](#macro-string-operations)
@@ -26,6 +27,53 @@ Scripting language by chalcinxx.
 - - [Run arguments](#run-arguments)
 
 ## Macros
+### Importing
+Other files can be imported using this syntax:
+```c
+#import "file.ext";
+#include "file.ext";
+
+#import "file1.ext", "file2.ext";
+#include "file1.ext", "file2.ext";
+```
+Here's an example:
+> include.q
+```c
+mut let x = 20;
+```
+> script.q
+```c
+#import "include.q";
+mut let y = 30;
+```
+After processing:
+```c
+mut let x = 20;
+mut let y = 30;
+```
+The difference between `#import` and `#include` is that `#import` checks if the file has been imported already and will automatically prevent importing the same file multiple times, but `#include` does not and allows to include the same file as many times as is needed. Here's an example:
+> include.q
+```c
+mut let x = 10;
+```
+> script1.q
+```c
+#import "include.q", "include.q", "include.q";
+```
+After processing `script1.q`:
+```c
+mut let x = 10;
+```
+> script2.q
+```c
+#include "include.q", "include.q", "include.q";
+```
+After processing `script2.q`:
+```c
+mut let x = 10;
+mut let x = 10;
+mut let x = 10;
+```
 ### Defines
 Macros can be defined with this syntax:
 ```c

@@ -36,7 +36,7 @@ private:
    void handle_using_macro();
    void handle_deleting_macro();
    void handle_importing();
-   void handle_file();
+   void handle_file(const std::string& file, bool include_guard);
    void handle_macro_conditionals();
    void handle_boolean_expressions();
    void handle_concatenation();

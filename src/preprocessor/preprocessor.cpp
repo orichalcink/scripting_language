@@ -1,5 +1,7 @@
 #include "preprocessor/preprocessor.hpp"
 #include "errors/errors.hpp"
+#include "io/files.hpp"
+#include "lexer/lexer.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -415,12 +417,90 @@ void Preprocessor::handle_deleting_macro()
 
 void Preprocessor::handle_importing()
 {
+   auto& token = current();
+   bool include_guard = (token.lexeme == "import");
+   
+   token = skip();
+   if (token.type == TType::identifier && this->macros.find(token.lexeme) != this->macros.end())
+   {
+      handle_using_macro();
+      ++this->index;
+      token = current();
+   }
 
+   if (token.type != TType::string)
+   {
+      this->catcher.insert(err::expected_file);
+      return;
+   }
+   std::string& file = token.lexeme;
+   
+   std::vector<std::string> files;
+   files.push_back(file);
+   token = skip();
+
+   while (token.type == TType::comma)
+   {
+      token = skip();
+      if (token.type == TType::identifier && this->macros.find(token.lexeme) != this->macros.end())
+      {
+         handle_using_macro();
+         ++this->index;
+         token = current();
+      }
+
+      if (token.type != TType::string)
+      {
+         this->catcher.insert(err::expected_file);
+         return;
+      }
+      files.push_back(token.lexeme);
+      token = skip();
+   }
+
+   if (token.type != TType::semicolon)
+   {
+      this->catcher.insert(err::statement_semicolon);
+      return;
+   }
+   token.type = TType::skip;
+   skip();
+   --this->index;
+
+   for (auto& f : files)
+      handle_file(f, include_guard);
 }
 
-void Preprocessor::handle_file()
+void Preprocessor::handle_file(const std::string& file, bool include_guard)
 {
+   if (!is_file(file))
+   {
+      this->catcher.insert(err::import_invalid_file);
+      return;
+   }
+   bool contains = (this->included_files.find(file) != this->included_files.end());
 
+   if (include_guard && contains)
+      return;
+   
+   if (!contains)
+      this->included_files.insert(file);
+   
+   std::string input = read_file(this->catcher, file);
+
+   if (!this->catcher.empty())
+      return;
+   
+   Lexer lexer (this->catcher, input);
+   auto& tokens = lexer.tokenize();
+
+   if (!this->catcher.empty())
+      return;
+
+   tokens.back().type = TType::skip;
+   this->tokens.insert(this->tokens.begin() + this->index , tokens.begin(), tokens.end());
+   this->total_size = this->tokens.size();
+   --this->index;
 }
 
 void Preprocessor::handle_macro_conditionals()

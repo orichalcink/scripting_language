@@ -713,7 +713,11 @@ bool Preprocessor::handle_boolean_expressions()
             operators.pop();
          }
       }
-      else output.push(token);
+      else
+      {
+         Token copied = token;
+         output.push(copied);
+      }
 
       token = skip();
    }
@@ -741,7 +745,7 @@ bool Preprocessor::handle_boolean_expressions()
 
    while (!output.empty())
    {
-      auto& token = output.top();
+      Token token = output.top(); // Copy
       output.pop();
       reversed.push(token);
    }
@@ -750,7 +754,7 @@ bool Preprocessor::handle_boolean_expressions()
 
    while (!reversed.empty())
    {
-      auto& token = reversed.top();
+      Token token = reversed.top(); // Copy
       reversed.pop();
 
       if (token.type == TType::identifier)

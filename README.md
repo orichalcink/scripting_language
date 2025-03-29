@@ -1,5 +1,5 @@
 # Scripting language
-Scripting language by chalcinxx. Version 1.2.0.
+Scripting language by chalcinxx. Version 1.2.1.
 
 ## How it works
 1. The input is retrieved from the user and parsed into arguments.

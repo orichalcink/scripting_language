@@ -43,6 +43,7 @@ private:
    void handle_equality_operators();
    void handle_errors();
    void handle_logging();
+   void handle_asserts();
 
    Token& current();
    Token& skip();

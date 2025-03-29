@@ -24,19 +24,17 @@ bool Catcher::display()
       return false;
    
    #if defined(__linux__) || defined(__APPLE__)
-   std::cout << "\033[38;2;255;0;0m";
-   #endif
-
-   std::cout << std::endl << count << " error" << (count == 1 ? char{} : 's') << " occurred:" << std::endl;
-
-   #if defined(__linux__) || defined(__APPLE__)
-   std::cout << "\033[0m";
+   std::cout << "\n\033[38;2;255;0;0m";
+   std::cout << count << " error" << (count == 1 ? char{} : 's') << " occurred:";
+   std::cout << "\033[0m\n";
+   #else
+   std::cout << "\n" << count << " error" << (count == 1 ? char{} : 's') << " occurred:\n";
    #endif
 
    for (const auto& error : this->errors)
-      std::cout << error << std::endl;
+      std::cout << error << "\n";
    
-   std::cout << std::endl;
+   std::cout << "\n";
    this->errors.clear();
    return true;
 }

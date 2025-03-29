@@ -12,7 +12,7 @@ static inline const std::unordered_set<std::string> keywords
    "def"s, "defl"s, "undef"s,
    "import"s, "include"s,
    "if"s, "elif"s, "else"s, "endif"s,
-   "error"s, "log"s, "logl"s
+   "error"s, "log"s, "logl"s, "assert"s
 };
 
 #endif // KEYWORDS_H

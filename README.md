@@ -1,5 +1,5 @@
 # Scripting language
-Scripting language by chalcinxx. Version 1.0.1.
+Scripting language by chalcinxx. Version 1.2.0.
 
 ## How it works
 1. The input is retrieved from the user and parsed into arguments.
@@ -159,6 +159,16 @@ Errors can be thrown using the `#error` keyword, the errors will be thrown using
 ```c
 #error "Error: something went wrong!";
 ```
+### Asserts:
+Asserts can be defined using the `#assert` keyword, first goes the boolean expression and then the error, separated by a comma or a newline. If the boolean expression evaluates to true, the error will be thrown using the same system that any syntax, file and other errors are thrown with:
+```c
+#assert x, "Expected X to be defined!";
+
+#def y = 5;
+
+#assert y == 20
+"Expected Y to be equal to 20!";
+```
 ### Logging:
 Anything at the preprocessor-level can be logged with the `#log` keyword using this syntax:
 ```c
@@ -195,6 +205,8 @@ Predefined macros can be used like any other macro, even undefined if needed:
 #log __DATETIME__; // Logs the current date and time
 ```
 Here's the list of all of them:
+- `__TRUE__` - Expands to `1`.
+- `__FALSE__` - Expands to `0`.
 - `__FILE__` - Current file.
 - `__VERSION__` - Current version as integer.
 - `__VERSION_MAJOR__` - Major version.
@@ -209,6 +221,7 @@ Here's the list of all of them:
 - `__OS__` - Name of the OS ("Windows", "Linux" or "MacOS").
 
 List of empty macros purely for macro conditionals:
+- `__STD_MACRO__` - Predefined macros are defined.
 - `__WIN__` - User is using Windows.
 - `__LINUX__` - User is using Linux.
 - `__MACOS__` - User is using MacOS.

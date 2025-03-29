@@ -39,7 +39,8 @@ Args::Args(Catcher& catcher, std::string& command)
       }
       this->indexes.insert({index++, arg});
 
-      if (first && arg != "quit" && arg != "run" && arg != "help")
+      // Wow...
+      if (first && arg != "quit" && arg != "run" && arg != "help" && arg != "version" && arg != "cat")
          break;
       first = false;
    }

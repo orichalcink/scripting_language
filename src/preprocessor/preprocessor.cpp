@@ -107,6 +107,12 @@ Preprocessor::Preprocessor(Catcher& catcher, std::vector<Token>& tokens, const s
       #endif
    #endif
 
+   token = {TType::integer, "1"};
+   this->macros.insert({"__TRUE__", {token}});
+
+   token.lexeme = "0";
+   this->macros.insert({"__FALSE__", {token}});
+   this->macros.insert({"__STD_MACRO__", {skip}});
 }
 
 void Preprocessor::specify_max_macro_depth(size_t max_macro_depth)
@@ -157,6 +163,8 @@ void Preprocessor::evaluate_token()
       handle_errors();
    else if (token.type == TType::macro && (token.lexeme == "log" || token.lexeme == "logl"))
       handle_logging();
+   else if (token.type == TType::macro && token.lexeme == "assert")
+      handle_asserts();
    else if (token.type == TType::eoi && this->macros.find("__FILE__") != this->macros.end())
       this->macros.at("__FILE__").at(0).lexeme = token.lexeme;
 
@@ -671,7 +679,7 @@ bool Preprocessor::handle_boolean_expressions()
    std::stack<Token> operators;
    std::stack<Token> output;
 
-   while (token.type != TType::eof && token.type != TType::newline)
+   while (token.type != TType::eof && token.type != TType::newline && token.type != TType::comma)
    {
       if (get_operator_precedence(token.type))
       {
@@ -939,7 +947,37 @@ void Preprocessor::handle_logging()
    skip();
 
    --this->index;
-   std::cout << log << std::endl;
+   std::cout << log << "\n";
+}
+
+void Preprocessor::handle_asserts()
+{
+   auto& token = skip();
+   bool result = handle_boolean_expressions();
+   token = current();
+
+   if (token.type != TType::string)
+   {
+      this->catcher.insert(err::expected_string_after_assert);
+      return;
+   }
+   
+   if (!result)
+   {
+      this->catcher.insert(token.lexeme.c_str());
+      return;
+   }
+   token = skip();
+
+   if (token.type != TType::semicolon)
+   {
+      this->catcher.insert(err::statement_semicolon);
+      return;
+   }
+
+   token.type = TType::skip;
+   skip();
+   --this->index;
 }
 
 Token& Preprocessor::current()

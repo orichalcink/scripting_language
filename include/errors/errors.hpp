@@ -7,6 +7,7 @@ namespace err
 {
    // REPL errors
    error invalid_run_command = "Invalid run command, expected the second argument to be a valid file.";
+   error invalid_cat_command = "Invalid cat command, expected the second argument to be a valid file.";
 
    // Argument errors
    error out_of_bounds_arg = "Tried to access out of bounds argument.";
@@ -52,6 +53,7 @@ namespace err
    error invalid_bool_expr = "Invalid boolean expression in macro conditional.";
    error unexpected_token_mcond = "Unexpected token in macro conditional boolean expression.";
    error could_not_convert_number = "Could not convert the token to a number.";
+   error expected_string_after_assert = "Expected a string after the assert macro.";
 } // namespace err
 
 #undef error

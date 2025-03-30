@@ -2,6 +2,7 @@
 #include "errors/catcher.hpp"
 #include "errors/errors.hpp"
 #include "lexer/lexer.hpp"
+#include "parser/parser.hpp"
 #include "preprocessor/preprocessor.hpp"
 #include "io/files.hpp"
 #include "io/args.hpp"
@@ -107,8 +108,8 @@ int main()
             continue;
          }
 
-         auto start_lex = std::chrono::high_resolution_clock::now();
          Lexer lexer (catcher, input);
+         auto start_lex = std::chrono::high_resolution_clock::now();
          auto& tokens = lexer.tokenize();
          auto end_lex = std::chrono::high_resolution_clock::now();
 
@@ -122,8 +123,7 @@ int main()
                printf("%-13s - \"%s\"\n", token_to_string(token.type), token.lexeme.c_str());
          }
 
-
-         auto start_pre = std::chrono::high_resolution_clock::now();
+         std::chrono::time_point<std::chrono::high_resolution_clock> start_pre, end_pre;
          if (!args.get_arg("--skip-preprocessor"))
          {
             Preprocessor preprocessor (catcher, tokens, file_name, args.get_arg("--no-predefined-macros"));
@@ -131,12 +131,13 @@ int main()
             if (args.contains("--macro-depth"))
                preprocessor.specify_max_macro_depth(args.get_arg("--macro-depth"));
 
+            start_pre = std::chrono::high_resolution_clock::now();
             preprocessor.process();
+            end_pre = std::chrono::high_resolution_clock::now();
 
             if (catcher.display())
                continue;
          }
-         auto end_pre = std::chrono::high_resolution_clock::now();
 
          if (args.get_arg("--log-preprocessor"))
          {
@@ -145,15 +146,31 @@ int main()
                printf("%-13s - \"%s\"\n", token_to_string(token.type), token.lexeme.c_str());
          }
 
+         Parser parser (catcher, tokens);
+         auto start_par = std::chrono::high_resolution_clock::now();
+         auto& program = parser.parse();
+         auto end_par = std::chrono::high_resolution_clock::now();
+
+         if (catcher.display())
+            continue;
+
+         if (args.get_arg("--log-parser"))
+         {
+            std::cout << "\nAST tree after parsing:\n";
+            program.print();
+         }
+
          if (args.get_arg("--bench"))
          {
             auto lex = std::chrono::duration_cast<std::chrono::microseconds>(end_lex - start_lex).count();
             auto pre = std::chrono::duration_cast<std::chrono::microseconds>(end_pre - start_pre).count();
+            auto par = std::chrono::duration_cast<std::chrono::microseconds>(end_par - start_par).count();
 
             printf("Benchmark:\n");
             printf("%-16s %ld μs\n", "Lexing time:", lex);
             printf("%-16s %ld μs\n", "Processing time:", pre);
-            printf("%-16s %ld μs\n", "Total:", lex + pre);
+            printf("%-16s %ld μs\n", "Parsing time:", par);
+            printf("%-16s %ld μs\n", "Total:", lex + pre + par);
          }
       }
       else
@@ -166,6 +183,12 @@ int main()
 
          Preprocessor preprocessor (catcher, tokens, "", false);
          preprocessor.process();
+
+         if (catcher.display())
+            continue;
+         
+         Parser parser (catcher, tokens);
+         auto& program = parser.parse();
 
          if (catcher.display())
             continue;

@@ -54,6 +54,11 @@ namespace err
    error unexpected_token_mcond = "Unexpected token in macro conditional boolean expression.";
    error could_not_convert_number = "Could not convert the token to a number.";
    error expected_string_after_assert = "Expected a string after the assert macro.";
+
+   // Parser errors
+   error expected_colon_ternary = "Expected a ':' after the middle expression in the ternary expression while parsing.";
+   error mismatched_parentheses = "Mismatched parentheses while parsing.";
+   error expected_primary_expression = "Expected primary expression while parsing.";
 } // namespace err
 
 #undef error

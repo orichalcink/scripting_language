@@ -2,83 +2,140 @@
 #include "errors/errors.hpp"
 #include "lexer/keywords.hpp"
 
+using namespace std::string_literals;
+
 Lexer::Lexer(Catcher& catcher, std::string& source)
-   : catcher(catcher), source(source) {}
+   : catcher(catcher), source(source), size(source.size()) {}
 
 std::vector<Token>& Lexer::tokenize()
 {
-   const auto source_size = this->source.size();
-
-   for (; this->index < source_size; ++this->index)
+   for (; this->index < this->size; ++this->index)
    {
       char ch = this->source.at(this->index);
 
       if (ch == '\n')
-         push_token(TType::newline, "\n");
+         push_token(TType::newline, "\n"s);
       else if (isspace(ch))
          continue;
-      else if (ch == ';' && peek() == ';')
-         push_token_ad(TType::newline, ";;");
-      else if (ch == ';')
-         push_token(TType::semicolon, ";");
-      else if (ch == '=' && peek() == '=')
-         push_token_ad(TType::equals_equals, "==");
-      else if (ch == '=')
-         push_token(TType::equals, "=");
-      else if (ch == '<' && peek() == '=')
-         push_token_ad(TType::smaller_equal, "<=");
-      else if (ch == '<')
-         push_token(TType::smaller, "<");
-      else if (ch == '>' && peek() == '=')
-         push_token_ad(TType::bigger_equal, ">=");
-      else if (ch == '>')
-         push_token(TType::bigger, ">");
-      else if (ch == '!' && peek() == '=')
-         push_token_ad(TType::bang_equal, "!=");
-      else if (ch == '!')
-         push_token(TType::bang, "!");
-      else if (ch == '&' && peek() == '&')
-         push_token_ad(TType::and_, "&&");
-      else if (ch == '|' && peek() == '|')
-         push_token_ad(TType::or_, "||");
-      else if (ch == '(')
-         push_token(TType::l_paren, "(");
-      else if (ch == ')')
-         push_token(TType::r_paren, ")");
-      else if (ch == ',')
-         push_token(TType::comma, ",");
-      else if (ch == '#' && peek() == '#')
-         push_token_ad(TType::hash_hash, "##");
-      else if (ch == '#' && peek() == '=')
-         push_token_ad(TType::macro_equals, "#=");
-      else if (ch == '#' && peek() == '!')
-         push_token_ad(TType::macro_bang_equals, "#!");
-      else if (ch == '.' && peek() == '.')
-      {
-         advance();
-
-         if (peek() == '.')
-            push_token_ad(TType::dot_dot_dot, "...");
-         else
-            --this->index;
-      }
       else if (ch == '/' && peek() == '/')
-         for (; this->index < source_size && this->source.at(this->index) != '\n'; ++this->index)
+         for (; this->index < this->size && this->source.at(this->index) != '\n'; ++this->index)
             ;
       else if (ch == '/' && peek() == '*')
       {
-         for (; this->index < source_size && (prev() != '*' || this->source.at(this->index) != '/'); ++this->index)
+         for (; this->index < this->size && (prev() != '*' || this->source.at(this->index) != '/'); ++this->index)
             ;
 
-         if (this->index >= source_size)
+         if (this->index >= this->size)
             this->catcher.insert(err::unterminated_comment);
       }
+      else if (ch == '?')
+         push_token(TType::question, "?"s);
+      else if (ch == ':')
+         push_token(TType::colon, ":"s);
+      else if (ch == '=' && peek() == '=')
+         push_token_ad(TType::equals_equals, "=="s);
+      else if (ch == '=')
+         push_token(TType::equals, "="s);
+      else if (ch == '+' && peek() == '=')
+         push_token_ad(TType::plus_equals, "+="s);
+      else if (ch == '+' && peek() == '+')
+         push_token_ad(TType::plus_plus, "++"s);
+      else if (ch == '+')
+         push_token(TType::plus, "+"s);
+      else if (ch == '-' && peek() == '=')
+         push_token_ad(TType::minus_equals, "-="s);
+      else if (ch == '-' && peek() == '-')
+         push_token_ad(TType::minus_minus, "--"s);
+      else if (ch == '-')
+         push_token(TType::minus, "-"s);
+      else if (ch == '*' && peek() == '=')
+         push_token_ad(TType::star_equals, "*="s);
+      else if (ch == '*' && peek() == '*' && peek2() == '=')
+         push_token_ad2(TType::star_star_equals, "**="s);
+      else if (ch == '*' && peek() == '*')
+         push_token_ad(TType::star_star, "**"s);
+      else if (ch == '*')
+         push_token(TType::star, "*"s);
+      else if (ch == '/' && peek() == '=')
+         push_token_ad(TType::slash_equals, "/="s);
+      else if (ch == '/')
+         push_token(TType::slash, "/"s);
+      else if (ch == '%' && peek() == '=')
+         push_token_ad(TType::percent_equals, "%="s);
+      else if (ch == '%')
+         push_token(TType::percent, "%"s);
+      else if (ch == '<' && peek() == '<' && peek2() == '=')
+         push_token_ad2(TType::shift_left_equals, "<<="s);
+      else if (ch == '<' && peek() == '<')
+         push_token_ad(TType::shift_left, "<<"s);
+      else if (ch == '<' && peek() == '=')
+         push_token_ad(TType::smaller_equals, "<="s);
+      else if (ch == '<')
+         push_token(TType::smaller, "<"s);
+      else if (ch == '>' && peek() == '>' && peek2() == '=')
+         push_token_ad2(TType::shift_right_equals, ">>="s);
+      else if (ch == '>' && peek() == '>')
+         push_token_ad(TType::shift_right, ">>"s);
+      else if (ch == '>' && peek() == '=')
+         push_token_ad(TType::bigger_equals, ">="s);
+      else if (ch == '>')
+         push_token(TType::bigger, ">"s);
+      else if (ch == '!' && peek() == '=')
+         push_token_ad(TType::not_equals, "!="s);
+      else if (ch == '!')
+         push_token(TType::logical_not, "!"s);
+      else if (ch == '~')
+         push_token(TType::bitwise_not, "~"s);
+      else if (ch == '&' && peek() == '&')
+         push_token_ad(TType::logical_and, "&&"s);
+      else if (ch == '&' && peek() == '=')
+         push_token_ad(TType::bitwise_and_equals, "&="s);
+      else if (ch == '&')
+         push_token(TType::bitwise_and, "&"s);
+      else if (ch == '|' && peek() == '|')
+         push_token_ad(TType::logical_or, "||"s);
+      else if (ch == '|' && peek() == '=')
+         push_token_ad(TType::bitwise_or_equals, "|="s);
+      else if (ch == '|')
+         push_token(TType::bitwise_or, "|"s);
+      else if (ch == '^' && peek() == '=')
+         push_token_ad(TType::bitwise_xor_equals, "^="s);
+      else if (ch == '^')
+         push_token(TType::bitwise_xor, "^"s);
+      else if (ch == '.' && peek() == '.' && peek2() == '.')
+         push_token_ad2(TType::dot_dot_dot, "..."s);
+      else if (ch == '.')
+         push_token(TType::dot, "."s);
+      else if (ch == ',')
+         push_token(TType::comma, ","s);
+      else if (ch == ';' && peek() == ';')
+         push_token_ad(TType::newline, ";;"s);
+      else if (ch == ';')
+         push_token(TType::semicolon, ";"s);
+      else if (ch == '#' && peek() == '#')
+         push_token_ad(TType::hash_hash, "##"s);
+      else if (ch == '#' && peek() == '=' && peek2() == '=')
+         push_token_ad2(TType::hash_equals, "#=="s);
+      else if (ch == '#' && peek() == '!' && peek2() == '=')
+         push_token_ad2(TType::hash_not_equals, "#!="s);
+      else if (ch == '(')
+         push_token(TType::l_paren, "("s);
+      else if (ch == ')')
+         push_token(TType::r_paren, ")"s);
+      else if (ch == '[')
+         push_token(TType::l_bracket, "["s);
+      else if (ch == ']')
+         push_token(TType::r_bracket, "]"s);
+      else if (ch == '{')
+         push_token(TType::l_brace, "{"s);
+      else if (ch == '}')
+         push_token(TType::r_brace, "}"s);
       else if (ch == '"')
       {
          advance();
          std::string string;
 
-         for (; this->index < source_size; ++this->index)
+         for (; this->index < this->size; ++this->index)
          {
             ch = this->source.at(this->index);
 
@@ -109,7 +166,7 @@ std::vector<Token>& Lexer::tokenize()
             string += ch;
          }
 
-         if (this->index >= source_size)
+         if (this->index >= this->size)
          {
             this->catcher.insert(err::unterminated_string);
             return tokens;
@@ -142,7 +199,7 @@ std::vector<Token>& Lexer::tokenize()
             next = advance();
          }
          
-         if (next != '\'' || this->index >= source_size)
+         if (next != '\'' || this->index >= this->size)
             this->catcher.insert(err::invalid_char);
          
          push_token(TType::character, std::string(1, ch));
@@ -155,7 +212,7 @@ std::vector<Token>& Lexer::tokenize()
          if (macro)
             advance();
          
-         for (; this->index < source_size; ++this->index)
+         for (; this->index < this->size; ++this->index)
          {
             ch = this->source.at(this->index);
 
@@ -176,7 +233,7 @@ std::vector<Token>& Lexer::tokenize()
          bool floating = false;
          bool last_quote = false;
 
-         for (; this->index < source_size; ++this->index)
+         for (; this->index < this->size; ++this->index)
          {
             ch = this->source.at(this->index);
 
@@ -213,7 +270,7 @@ std::vector<Token>& Lexer::tokenize()
       else
          this->catcher.insert(err::unexpected_char);
    }
-   push_token(TType::eof, "EOF");
+   push_token(TType::eof, "EOF"s);
    return tokens;
 }
 
@@ -230,24 +287,38 @@ void Lexer::push_token_ad(TType type, const std::string& lexeme)
    ++this->index;
 }
 
+void Lexer::push_token_ad2(TType type, const std::string& lexeme)
+{
+   Token new_token {type, lexeme};
+   this->tokens.push_back(new_token);
+   this->index += 2;
+}
+
 char Lexer::advance()
 {
-   if (this->index + 1 >= this->source.size())
-      return 0;
+   if (this->index + 1 >= size)
+      return char{};
    ++this->index;
    return this->source.at(this->index);
 }
 
 char Lexer::peek() const
 {
-   if (this->index + 1 >= this->source.size())  
-      return 0;
+   if (this->index + 1 >= size)  
+      return char{};
    return this->source.at(this->index + 1);
+}
+
+char Lexer::peek2() const
+{
+   if (this->index + 2 >= size)
+      return char{};
+   return this->source.at(this->index + 2);
 }
 
 char Lexer::prev() const
 {
    if (this->index == 0)
-      return 0;
+      return char{};
    return this->source.at(this->index - 1);
 }

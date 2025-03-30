@@ -157,7 +157,7 @@ void Preprocessor::evaluate_token()
       this->catcher.insert(err::invalid_mcond_start);
    else if (token.type == TType::hash_hash)
       handle_concatenation();
-   else if (token.type == TType::macro_equals || token.type == TType::macro_bang_equals)
+   else if (token.type == TType::hash_equals || token.type == TType::hash_not_equals)
       handle_equality_operators();
    else if (token.type == TType::macro && token.lexeme == "error")
       handle_errors();
@@ -790,7 +790,7 @@ bool Preprocessor::handle_boolean_expressions()
          }
          evaluated.push(result);
       }
-      else if (token.type == TType::bang)
+      else if (token.type == TType::logical_not)
       {
          if (evaluated.size() == 0)
          {
@@ -819,28 +819,28 @@ bool Preprocessor::handle_boolean_expressions()
          long double result = 0.0;
          switch (token.type)
          {
-         case TType::and_:
+         case TType::logical_and:
             result = (a && b);
             break;
-         case TType::or_:
+         case TType::logical_or:
             result = (a || b);
             break;
          case TType::equals_equals:
             result = (a == b);
             break;
-         case TType::bang_equal:
+         case TType::not_equals:
             result = (a != b);
             break;
          case TType::smaller:
             result = (a < b);
             break;
-         case TType::smaller_equal:
+         case TType::smaller_equals:
             result = (a <= b);
             break;
          case TType::bigger:
             result = (a > b);
             break;
-         case TType::bigger_equal:
+         case TType::bigger_equals:
             result = (a >= b);
             break;
          default:
@@ -883,7 +883,7 @@ void Preprocessor::handle_equality_operators()
       return;
    }
    size_t op_index = this->index;
-   bool negative = (current().type == TType::macro_bang_equals);
+   bool negative = (current().type == TType::hash_not_equals);
 
    auto& left  = this->tokens.at(op_index - 2);
    auto& right = this->tokens.at(op_index - 1);
@@ -1006,11 +1006,11 @@ int Preprocessor::get_operator_precedence(TType type) const
 {
    switch (type)
    {
-      case TType::bang: return 5;
-      case TType::smaller: case TType::smaller_equal: case TType::bigger: case TType::bigger_equal: return 4;
-      case TType::equals_equals: case TType::bang_equal: return 3;
-      case TType::and_: return 2;
-      case TType::or_: return 1;
+      case TType::logical_not: return 5;
+      case TType::smaller: case TType::smaller_equals: case TType::bigger: case TType::bigger_equals: return 4;
+      case TType::equals_equals: case TType::not_equals: return 3;
+      case TType::logical_and: return 2;
+      case TType::logical_or: return 1;
       default: return 0;
    }
 }

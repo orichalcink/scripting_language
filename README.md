@@ -1,5 +1,5 @@
 # Scripting language
-Scripting language by chalcinxx. Version 1.2.1.
+Scripting language by chalcinxx. Version 1.3.0.
 
 ## How it works
 1. The input is retrieved from the user and parsed into arguments.
@@ -136,8 +136,8 @@ Note that the `##` operator does not automatically separate the arguments with a
 ### Macro equality operations
 Two token lexemes can be checked at the preprocessor stage with `#=` and `#!` operators:
 ```c
-let "let" #= // true, because they have the same lexeme
-10 "10" #! // false, because they have the same lexeme
+let "let" #== // true, because they have the same lexeme
+10 "10" #!= // false, because they have the same lexeme
 ```
 Just like the `##` operator, these two operators take the previous two tokens and compare them.
 ### Un-defines:

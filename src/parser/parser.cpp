@@ -1,6 +1,8 @@
 #include "parser/parser.hpp"
 #include "errors/errors.hpp"
 
+using namespace std::string_literals;
+
 Parser::Parser(Catcher& catcher, std::vector<Token>& tokens)
    : catcher(catcher), tokens(tokens) {}
 
@@ -8,12 +10,112 @@ Program& Parser::parse()
 {
    while (!is(TType::eof))
    {
-      this->program.statements.push_back(std::move(parse_compound_bitwise_expr()));
+      this->program.statements.push_back(std::move(parse_stmt()));
 
       if (!catcher.empty())
          return this->program;
    }
    return this->program;
+}
+
+Stmt Parser::parse_stmt()
+{
+   return parse_var_declaration();
+}
+
+Stmt Parser::parse_var_declaration()
+{
+   auto ttype = parse_type();
+
+   if (ttype->type() != StmtType::type)
+      return ttype;
+   
+   auto ident = parse_primary_expr();
+
+   if (ident->type() != StmtType::identifier)
+   {
+      this->catcher.insert(err::expected_identifier_var_decl);
+      return ttype;
+   }
+
+   if (is(TType::semicolon))
+   {
+      advance();
+
+      auto* t = static_cast<TypeExpr*>(ttype.get());
+
+      if (!t->mut)
+      {
+         this->catcher.insert(err::expected_var_body);
+         return ttype;
+      }
+
+      if (t->automatic)
+      {
+         this->catcher.insert(err::auto_must_have_body);
+         return ttype;
+      }
+
+      auto* i = static_cast<Identifier*>(ident.get());
+      Stmt body = std::make_unique<NullLiteral>();
+      return std::make_unique<VarDeclaration>(ttype, i->identifier, body);
+   }
+   else if (is(TType::equals))
+   {
+      advance();
+      auto* i = static_cast<Identifier*>(ident.get());
+      auto body = parse_var_declaration();
+
+      if (!is(TType::semicolon))
+      {
+         this->catcher.insert(err::statement_semicolon);
+         return ttype;
+      }
+      advance();
+      return std::make_unique<VarDeclaration>(ttype, i->identifier, body);
+   }
+   else
+   {
+      this->catcher.insert(err::expected_equals_or_semicolon);
+      return ttype;
+   }
+}
+
+Stmt Parser::parse_type()
+{
+   if (current().lexeme != "mut"s && current().lexeme != "con"s && current().lexeme != "let"s && !is_type())
+      return parse_compound_bitwise_expr();
+   
+   bool con = false;
+   bool mut = false;
+   bool automatic = false;
+   std::string ttype = "";
+
+   if (current().lexeme == "mut"s)
+   {
+      mut = true;
+      advance();
+   }
+   else if (current().lexeme == "con"s)
+   {
+      con = true;
+      advance();
+   }
+
+   if (current().lexeme == "let"s)
+   {
+      automatic = true;
+   }
+   else if (is_type())
+   {
+      ttype = current().lexeme;
+   }
+   else
+   {
+      this->catcher.insert(err::expected_type);
+   }
+   advance();
+   return std::make_unique<TypeExpr>(con, mut, automatic, std::move(ttype));
 }
 
 Stmt Parser::parse_compound_bitwise_expr()
@@ -366,7 +468,7 @@ Stmt Parser::parse_primary_expr()
    else if (is(TType::l_paren))
    {
       advance();
-      auto value = parse_ternary_expr();
+      auto value = parse_stmt();
 
       if (!is(TType::r_paren))
          this->catcher.insert(err::mismatched_parentheses);
@@ -390,6 +492,12 @@ void Parser::advance()
 bool Parser::is(TType type) const
 {
    return this->tokens.at(this->index).type == type;
+}
+
+bool Parser::is_type() const
+{
+   const auto& t = this->tokens.at(this->index);
+   return t.type == TType::keyword && (t.lexeme == "int"s || t.lexeme == "real"s || t.lexeme == "char"s || t.lexeme == "string"s || t.lexeme == "bool"s); 
 }
 
 Token& Parser::current()

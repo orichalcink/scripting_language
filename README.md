@@ -7,8 +7,11 @@ Scripting language by chalcinxx. Version 1.3.0.
 3. If `run` argument is present, then open the file and use that as the input, else use the whole input.
 4. The input is turned into tokens by the lexer.
 5. The preprocessor handles macros, imports and macro conditionals.
+6. The parser converts the tokens into an AST tree and checks for valid syntax.
 
 ## Features:
+- [Variables](#variables)
+- - [Variable declaration](#variable-declaration)
 - [Macros](#macros)
 - - [Importing](#importing)
 - - [Defines](#defines)
@@ -28,6 +31,33 @@ Scripting language by chalcinxx. Version 1.3.0.
 - - [Executing code on the fly](#execute-code-on-the-fly)
 - - [Run arguments](#run-arguments)
 
+# Variables
+### Variable declaration
+Variables can be declared using this syntax:
+```c
+TYPE IDENTIFIER = BODY;
+TYPE IDENTIFIER;
+```
+Like this:
+```c
+string first_name = "John";
+mut int age;
+real pi = 3.1415;
+```
+Variables can have two prefixes: `con` and `mut`. `con` makes it so the variable cannot be shadowed. `mut` makes the variable mutable (editable), as they are immutable (constant) by default. A variable cannot have both at the same time, as `con` also implies that the variable is constant and will never change:
+```c
+con real pi = 3.1415; // Won't change any time soon
+pi = 4.1415; // Error
+real pi = 3.25 // Error
+
+mut int age = 24; // Will change at some point
+age = 25; // Valid
+mut int age = 26; // Valid
+
+char ch = 'a'; // Has to be shadowed to change
+ch = 'b'; // Error
+char ch = 'c'; // Valid
+```
 # Macros
 ### Importing
 Other files can be imported using this syntax:
@@ -134,7 +164,7 @@ This might look confusing, because the `##` operator concatenates two tokens tha
 
 Note that the `##` operator does not automatically separate the arguments with a space, but `"` do.
 ### Macro equality operations
-Two token lexemes can be checked at the preprocessor stage with `#=` and `#!` operators:
+Two token lexemes can be checked at the preprocessor stage with `#==` and `#!=` operators:
 ```c
 let "let" #== // true, because they have the same lexeme
 10 "10" #!= // false, because they have the same lexeme
@@ -268,6 +298,7 @@ Boolean expressions can also contain these operators:
 - `<=`
 - `>`
 - `>=`
+
 Here's an example:
 ```c
 #def x = 20;

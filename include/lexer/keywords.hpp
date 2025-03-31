@@ -8,7 +8,7 @@ using namespace std::string_literals;
 
 static inline const std::unordered_set<std::string> keywords
 {
-   "let"s, "mut"s,
+   "mut"s, "con"s, "let"s, "int"s, "real"s, "char"s, "string"s, "bool"s,
    "def"s, "defl"s, "undef"s,
    "import"s, "include"s,
    "if"s, "elif"s, "else"s, "endif"s,

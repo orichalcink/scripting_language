@@ -59,6 +59,11 @@ namespace err
    error expected_colon_ternary = "Expected a ':' after the middle expression in the ternary expression while parsing.";
    error mismatched_parentheses = "Mismatched parentheses while parsing.";
    error expected_primary_expression = "Expected primary expression while parsing.";
+   error expected_type = "Expected a type name after 'mut'/'con'.";
+   error expected_identifier_var_decl = "Expected an identifier after variable declaration.";
+   error expected_equals_or_semicolon = "Expected a ';' or '=' after variable declaration identifier.";
+   error expected_var_body = "Expected the immutable/constant variable to have a body.";
+   error auto_must_have_body = "Automatic variable must have an initial variable body.";
 } // namespace err
 
 #undef error

@@ -1,12 +1,42 @@
 #include "parser/ast.hpp"
 #include <iostream>
 
+VarDeclaration::VarDeclaration(Stmt& ttype, const std::string& identifier, Stmt& body)
+   : ttype(std::move(ttype)), identifier(identifier), body(std::move(body)) {}
+
+StmtType VarDeclaration::type() const
+{
+   return StmtType::var_decl;
+}
+
+void VarDeclaration::print(size_t indentation) const
+{
+   std::cout << std::string(indentation, ' ') << "Variable Declaration:\n";
+   this->ttype->print(indentation + 2);
+   std::cout << std::string(indentation, ' ') << "Identifier: [" << this->identifier << "]\n";
+   this->body->print(indentation + 2);
+}
+
+TypeExpr::TypeExpr(bool con, bool mut, bool automatic, const std::string& ttype)
+   : con(con), mut(mut), automatic(automatic), ttype(ttype) {}
+
+StmtType TypeExpr::type() const
+{
+   return StmtType::type;
+}
+
+void TypeExpr::print(size_t indentation) const
+{
+   std::cout << std::string(indentation + 1, ' ') << (this->mut ? "mut " : "");
+   std::cout << (this->con ? "con " : "") << (this->automatic ? "var" : this->ttype) << "\n";
+}
+
 AssignmentExpr::AssignmentExpr(TType op, Stmt& left, Stmt& right)
    : op(op), left(std::move(left)), right(std::move(right)) {}
 
-ExprType AssignmentExpr::type() const
+StmtType AssignmentExpr::type() const
 {
-   return ExprType::assignment;
+   return StmtType::assignment;
 }
 
 void AssignmentExpr::print(size_t indentation) const
@@ -20,9 +50,9 @@ void AssignmentExpr::print(size_t indentation) const
 TernaryExpr::TernaryExpr(Stmt& expr, Stmt& left, Stmt& right)
    : expr(std::move(expr)), left(std::move(left)), right(std::move(right)) {}
 
-ExprType TernaryExpr::type() const
+StmtType TernaryExpr::type() const
 {
-   return ExprType::ternary;
+   return StmtType::ternary;
 }
 
 void TernaryExpr::print(size_t indentation) const
@@ -38,9 +68,9 @@ void TernaryExpr::print(size_t indentation) const
 BinaryExpr::BinaryExpr(TType op, Stmt& left, Stmt& right)
    : op(op), left(std::move(left)), right(std::move(right)) {}
 
-ExprType BinaryExpr::type() const
+StmtType BinaryExpr::type() const
 {
-   return ExprType::binary;
+   return StmtType::binary;
 }
 
 void BinaryExpr::print(size_t indentation) const
@@ -54,9 +84,9 @@ void BinaryExpr::print(size_t indentation) const
 UnaryExpr::UnaryExpr(TType op, Stmt& value)
    : op(op), value(std::move(value)) {}
 
-ExprType UnaryExpr::type() const
+StmtType UnaryExpr::type() const
 {
-   return ExprType::unary;
+   return StmtType::unary;
 }
 
 void UnaryExpr::print(size_t indentation) const
@@ -66,9 +96,9 @@ void UnaryExpr::print(size_t indentation) const
    this->value->print(indentation + 2);
 }
 
-ExprType NullLiteral::type() const
+StmtType NullLiteral::type() const
 {
-   return ExprType::null;
+   return StmtType::null;
 }
 
 void NullLiteral::print(size_t indentation) const
@@ -79,9 +109,9 @@ void NullLiteral::print(size_t indentation) const
 Identifier::Identifier(const std::string& identifier)
    : identifier(identifier) {}
 
-ExprType Identifier::type() const
+StmtType Identifier::type() const
 {
-   return ExprType::identifier;
+   return StmtType::identifier;
 }
 
 void Identifier::print(size_t indentation) const
@@ -92,9 +122,9 @@ void Identifier::print(size_t indentation) const
 RealLiteral::RealLiteral(long double number)
    : number(number) {}
 
-ExprType RealLiteral::type() const
+StmtType RealLiteral::type() const
 {
-   return ExprType::real;
+   return StmtType::real;
 }
 
 void RealLiteral::print(size_t indentation) const
@@ -105,9 +135,9 @@ void RealLiteral::print(size_t indentation) const
 IntegralLiteral::IntegralLiteral(long long number)
    : number(number) {}
 
-ExprType IntegralLiteral::type() const
+StmtType IntegralLiteral::type() const
 {
-   return ExprType::integer;
+   return StmtType::integer;
 }
 
 void IntegralLiteral::print(size_t indentation) const
@@ -118,9 +148,9 @@ void IntegralLiteral::print(size_t indentation) const
 StringLiteral::StringLiteral(const std::string& string)
    : string(string) {}
 
-ExprType StringLiteral::type() const
+StmtType StringLiteral::type() const
 {
-   return ExprType::string;
+   return StmtType::string;
 }
 
 void StringLiteral::print(size_t indentation) const
@@ -131,9 +161,9 @@ void StringLiteral::print(size_t indentation) const
 CharLiteral::CharLiteral(char ch)
    : ch(ch) {}
 
-ExprType CharLiteral::type() const
+StmtType CharLiteral::type() const
 {
-   return ExprType::character;
+   return StmtType::character;
 }
 
 void CharLiteral::print(size_t indentation) const

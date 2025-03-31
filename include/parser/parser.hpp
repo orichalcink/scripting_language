@@ -19,6 +19,10 @@ private:
    Program program;
    size_t index = 0;
 
+   Stmt parse_stmt();
+   Stmt parse_var_declaration();
+   Stmt parse_type();
+
    Stmt parse_compound_bitwise_expr();
    Stmt parse_compound_shift_expr();
    Stmt parse_compound_additive_expr();
@@ -43,6 +47,7 @@ private:
 
    void advance();
    bool is(TType type) const;
+   bool is_type() const;
    Token& current();
 };
 
